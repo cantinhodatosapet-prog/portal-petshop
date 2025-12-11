@@ -239,17 +239,19 @@ else:
             c_val, c_met = st.columns(2)
             val_pag = c_val.number_input("Valor Pago (R$)", min_value=0.0, step=10.0)
             met_pag = c_met.selectbox("Forma", ["Pix", "Cartão Crédito", "Cartão Débito", "Dinheiro"])
-            arq = st.file_uploader("Comprovante (Imagem/PDF)", type=['png','jpg','jpeg','pdf'])
+            arq = st.file_uploader("Comprovante (Obrigatório)", type=['png','jpg','jpeg','pdf'])
             
             if st.form_submit_button("ENVIAR COMPROVANTE"):
-                if val_pag > 0:
+                if val_pag <= 0:
+                    st.warning("Informe o valor do pagamento.")
+                elif not arq: # --- TRAVA DE SEGURANÇA AQUI ---
+                    st.error("⚠️ É obrigatório anexar o comprovante para validar o pagamento.")
+                else:
                     with st.spinner("Enviando..."):
                         if enviar_pagamento(cli['id'], val_pag, met_pag, arq):
                             st.success("Pagamento enviado para análise! O saldo atualizará após a confirmação.")
                             time.sleep(2)
                             st.rerun()
-                else:
-                    st.warning("Informe o valor.")
 
     # 3. TABELAS
     if dados:
