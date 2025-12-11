@@ -88,6 +88,7 @@ def carregar_dados_financeiros(client_id):
     # Pagamentos
     resp_pag = supabase.table('transacoes_creditos').select('*').eq('cliente_id', client_id).eq('tipo', 'compra').execute()
     # Serviços
+    # ATENÇÃO: Adicionei 'observacoes' aqui para garantir que a referência apareça
     resp_serv = supabase.table('agendamentos').select(
         "id, data_hora, status, observacoes, animais(nome), servicos_base(nome_servico), lancamentos_servicos(valor_total_cobrado, status_pagamento)"
     ).eq('animais.cliente_id', client_id).execute()
@@ -173,14 +174,15 @@ else:
         # Loop Mês a Mês
         for (ano, mes), grupo_mes in df.groupby(['ano', 'mes'], sort=False):
             nome_mes = MESES[mes]
-            total_mes = grupo_mes[grupo_mes['tipo']=='deb']['val'].sum() # <--- AQUI ESTAVA O ERRO (nome da variavel corrigido)
+            # CORREÇÃO CRÍTICA AQUI: total_mes = ...
+            total_mes = grupo_mes[grupo_mes['tipo']=='deb']['val'].sum()
             
-            # Lista de Pets únicos neste mês (para por no cabeçalho)
+            # Lista de Pets únicos neste mês
             pets_no_mes = grupo_mes[grupo_mes['pet'] != 'Geral']['pet'].unique()
             pets_str = ", ".join(pets_no_mes) if len(pets_no_mes) > 0 else "Geral"
             
             # INICIA TABELA DO MÊS
-            # Cabeçalho Único: Mês - Ano | Cliente - Pets
+            # HTML Ajustado sem indentação
             html = f"""
 <table class="custom-table">
     <tr>
