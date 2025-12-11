@@ -173,7 +173,7 @@ else:
         # Loop Mês a Mês
         for (ano, mes), grupo_mes in df.groupby(['ano', 'mes'], sort=False):
             nome_mes = MESES[mes]
-            total_gastos = grupo_mes[grupo_mes['tipo']=='deb']['val'].sum()
+            total_mes = grupo_mes[grupo_mes['tipo']=='deb']['val'].sum() # <--- AQUI ESTAVA O ERRO (nome da variavel corrigido)
             
             # Lista de Pets únicos neste mês (para por no cabeçalho)
             pets_no_mes = grupo_mes[grupo_mes['pet'] != 'Geral']['pet'].unique()
