@@ -69,6 +69,7 @@ st.markdown("""
     .center-col { text-align: center; }
     .left-col { text-align: left; padding-left: 10px !important; }
     .val-col { text-align: right; font-weight: 700; padding-right: 15px !important; white-space: nowrap; }
+    .ref-col { font-size: 11px; color: #444; font-style: italic; text-align: center; }
     
     /* STATUS PILLS */
     .status-pill {
@@ -108,19 +109,18 @@ def enviar_pagamento(client_id, valor, metodo, arquivo):
             ext = arquivo.name.split('.')[-1]
             nome_arq = f"{client_id}_{int(datetime.now().timestamp())}.{ext}"
             
-            # Upload para o Bucket 'comprovantes'
-            # ATENÇÃO: Precisa criar o bucket 'comprovantes' no Supabase Storage e deixá-lo público
+            # Upload
             supabase.storage.from_("comprovantes").upload(path=nome_arq, file=arquivo.getvalue(), file_options={"content-type": arquivo.type})
             url_publica = supabase.storage.from_("comprovantes").get_public_url(nome_arq)
 
-        # Insere na tabela como PENDENTE
+        # Insere na tabela como PENDENTE (Correção: Data sem microsegundos para evitar erro no Pandas)
         dados = {
             "cliente_id": client_id,
-            "tipo": "compra", # Crédito
+            "tipo": "compra", 
             "valor_em_creditos": valor,
             "metodo_pagamento": metodo,
-            "status_transacao": "Pendente", # Aguarda sua aprovação
-            "data_transacao": datetime.now().isoformat(),
+            "status_transacao": "Pendente", 
+            "data_transacao": datetime.now().replace(microsecond=0).isoformat(),
             "observacoes": f"Enviado pelo Portal. Comp: {'Sim' if url_publica else 'Não'}",
             "url_comprovante": url_publica
         }
@@ -147,7 +147,6 @@ def carregar_dados_financeiros(client_id):
         
         label = "Confirmado" if status == 'Confirmado' else "Pendente"
         css = "st-azul" if status == 'Confirmado' else "st-vermelho"
-        # Se for pendente, avisa que está em análise
         obs_texto = p.get('observacoes') or f"Via {p.get('metodo_pagamento')}"
         if status == 'Pendente': obs_texto = "Em análise..."
 
@@ -255,7 +254,10 @@ else:
     # 3. TABELAS
     if dados:
         df = pd.DataFrame(dados)
-        df['date_obj'] = pd.to_datetime(df['dt'])
+        # --- CORREÇÃO DO PANDAS (IMPEDE O CRASH COM DATAS ESTRANHAS) ---
+        df['date_obj'] = pd.to_datetime(df['dt'], errors='coerce') 
+        df = df.dropna(subset=['date_obj']) # Remove se data inválida
+        
         df = df.sort_values(by='date_obj', ascending=False)
         df['ano'] = df['date_obj'].dt.year
         df['mes'] = df['date_obj'].dt.month
