@@ -43,6 +43,15 @@ st.markdown("""
         padding: 12px 15px; font-size: 14px; border: 1px solid #555; letter-spacing: 0.5px;
     }
     
+    /* Divisores de Seção (Serviço vs Pagamento) */
+    .section-header {
+        background-color: #333; color: #FFF; font-weight: bold; text-align: left;
+        padding: 8px 15px; font-size: 12px; letter-spacing: 1px; text-transform: uppercase;
+        border-left: 5px solid;
+    }
+    .sec-serv { border-left-color: #FFA500; } /* Laranja */
+    .sec-pag { border-left-color: #39FF14; } /* Verde Neon */
+    
     /* Colunas */
     .col-header {
         background-color: #A69B80; color: #000; font-weight: 700; text-align: center;
@@ -60,15 +69,15 @@ st.markdown("""
     .left-col { text-align: left; padding-left: 10px !important; }
     .val-col { text-align: right; font-weight: 700; padding-right: 15px !important; white-space: nowrap; }
     
-    /* STATUS PILLS (ETIQUETAS) */
+    /* STATUS PILLS */
     .status-pill {
-        display: inline-block; padding: 3px 8px; border-radius: 12px; 
-        font-size: 11px; font-weight: bold; text-transform: uppercase; color: #FFF;
+        display: inline-block; padding: 4px 8px; border-radius: 4px; 
+        font-size: 10px; font-weight: 800; text-transform: uppercase; color: #FFF; min-width: 80px;
     }
-    .st-verde { background-color: #2E7D32; }   /* Concluído/Pago */
-    .st-vermelho { background-color: #C62828; } /* Pendente */
-    .st-laranja { background-color: #EF6C00; }  /* Agendado */
-    .st-azul { background-color: #1565C0; }     /* Confirmado */
+    .st-verde { background-color: #2E7D32; }   
+    .st-vermelho { background-color: #C62828; } 
+    .st-laranja { background-color: #EF6C00; }  
+    .st-azul { background-color: #1565C0; }     
 
 </style>
 """, unsafe_allow_html=True)
@@ -86,10 +95,7 @@ def login(telefone_digitado, senha):
 
 # --- DADOS ---
 def carregar_dados_financeiros(client_id):
-    # Pagamentos
     resp_pag = supabase.table('transacoes_creditos').select('*').eq('cliente_id', client_id).eq('tipo', 'compra').execute()
-    
-    # Serviços (Trazendo status do pagamento também)
     resp_serv = supabase.table('agendamentos').select(
         "id, data_hora, status, observacoes, animais(nome), servicos_base(nome_servico), lancamentos_servicos(valor_total_cobrado, status_pagamento)"
     ).eq('animais.cliente_id', client_id).execute()
@@ -100,16 +106,16 @@ def carregar_dados_financeiros(client_id):
     # Processa Pagamentos
     for p in resp_pag.data:
         v = float(p.get('valor_em_creditos') or 0)
-        status_transacao = p.get('status_transacao')
-        if status_transacao == 'Confirmado': saldo += v
+        status = p.get('status_transacao')
+        if status == 'Confirmado': saldo += v
         
-        # Define Status Visual
-        status_visual = "Confirmado" if status_transacao == 'Confirmado' else "Pendente"
-        css_class = "st-azul" if status_transacao == 'Confirmado' else "st-vermelho"
+        # Define visual
+        label = "Confirmado" if status == 'Confirmado' else "Pendente"
+        css = "st-azul" if status == 'Confirmado' else "st-vermelho"
 
         lista.append({
-            'dt': p['data_transacao'], 'pet': 'Geral', 'desc': 'Crédito em Conta', 
-            'val': v, 'tipo': 'cred', 'status_label': status_visual, 'status_css': css_class
+            'dt': p['data_transacao'], 'pet': 'Geral', 'desc': f"Crédito ({p.get('metodo_pagamento')})", 
+            'val': v, 'tipo': 'cred', 'label': label, 'css': css
         })
 
     # Processa Serviços
@@ -119,35 +125,25 @@ def carregar_dados_financeiros(client_id):
         lanc = lanc[0] if isinstance(lanc, list) and lanc else (lanc if isinstance(lanc, dict) else {})
         v = float(lanc.get('valor_total_cobrado') or 0)
         
-        status_ag = s['status'] # Agendado, Concluído, Cancelado
-        status_fin = lanc.get('status_pagamento') # Pago, Pendente
+        st_ag = s['status']
+        st_fin = lanc.get('status_pagamento')
         
-        if status_ag == 'Concluído': saldo -= v
+        if st_ag == 'Concluído': saldo -= v
         
-        # LÓGICA DE STATUS COMPOSTO (SIMPLIFICADA)
-        if status_ag == 'Agendado':
-            label = "Agendado"
-            css = "st-laranja"
-        elif status_ag == 'Concluído':
-            if status_fin == 'Pago':
-                label = "Concluído (Pago)"
-                css = "st-verde"
-            else:
-                label = "Concluído (Pendente)"
-                css = "st-vermelho"
-        elif status_ag == 'Cancelado':
-            label = "Cancelado"
-            css = "st-vermelho"
-        else:
-            label = status_ag
-            css = "st-laranja"
+        # Lógica de Etiquetas
+        if st_ag == 'Agendado': label, css = "Agendado", "st-laranja"
+        elif st_ag == 'Concluído':
+            if st_fin == 'Pago': label, css = "Pago", "st-verde"
+            else: label, css = "Pendente", "st-vermelho"
+        elif st_ag == 'Cancelado': label, css = "Cancelado", "st-vermelho"
+        else: label, css = st_ag, "st-laranja"
 
         nome_pet = s['animais'].get('nome', 'Pet')
         nome_servico = s['servicos_base'].get('nome_servico', 'Serviço')
         
         lista.append({
-            'dt': s['data_hora'], 'pet': nome_pet, 'desc': f"{nome_servico}",
-            'val': v, 'tipo': 'deb', 'status_label': label, 'status_css': css
+            'dt': s['data_hora'], 'pet': nome_pet, 'desc': nome_servico,
+            'val': v, 'tipo': 'deb', 'label': label, 'css': css
         })
         
     return saldo, lista
@@ -193,12 +189,10 @@ else:
         df['ano'] = df['date_obj'].dt.year
         df['mes'] = df['date_obj'].dt.month
         
-        # Loop Mês
         for (ano, mes), grupo_mes in df.groupby(['ano', 'mes'], sort=False):
             nome_mes = MESES[mes]
             total_gastos = grupo_mes[grupo_mes['tipo']=='deb']['val'].sum()
             
-            # Cabeçalho do Mês e Nomes
             pets_no_mes = grupo_mes[grupo_mes['pet'] != 'Geral']['pet'].unique()
             pets_str = ", ".join(pets_no_mes) if len(pets_no_mes) > 0 else "Geral"
             
@@ -216,24 +210,25 @@ else:
         <td class="col-header">Status</td>
     </tr>
 """
-            # SEPARAÇÃO 1: SERVIÇOS
+            # 1. SERVIÇOS (COM SEPARADOR)
             servicos = grupo_mes[grupo_mes['tipo'] == 'deb']
             if not servicos.empty:
+                html += """<tr><td colspan="4" class="section-header sec-serv">SERVIÇOS REALIZADOS</td></tr>"""
                 for _, row in servicos.iterrows():
                     d = row['date_obj'].strftime("%d/%b").lower()
                     v = f"R$ {row['val']:.2f}"
-                    # Etiqueta de Status Colorida
-                    status_html = f"<span class='status-pill {row['status_css']}'>{row['status_label']}</span>"
-                    html += f"""<tr class="row-data"><td class="center-col">{d}</td><td class="left-col">{row['desc']}</td><td class="val-col">{v}</td><td class="center-col">{status_html}</td></tr>"""
+                    status = f"<span class='status-pill {row['css']}'>{row['label']}</span>"
+                    html += f"""<tr class="row-data"><td class="center-col">{d}</td><td class="left-col">{row['desc']}</td><td class="val-col">{v}</td><td class="center-col">{status}</td></tr>"""
 
-            # SEPARAÇÃO 2: PAGAMENTOS
+            # 2. PAGAMENTOS (COM SEPARADOR)
             pagamentos = grupo_mes[grupo_mes['tipo'] == 'cred']
             if not pagamentos.empty:
+                html += """<tr><td colspan="4" class="section-header sec-pag">PAGAMENTOS / CRÉDITOS</td></tr>"""
                 for _, row in pagamentos.iterrows():
                     d = row['date_obj'].strftime("%d/%b").lower()
                     v = f"+ R$ {row['val']:.2f}"
-                    status_html = f"<span class='status-pill {row['status_css']}'>{row['status_label']}</span>"
-                    html += f"""<tr class="row-data"><td class="center-col">{d}</td><td class="left-col">{row['desc']}</td><td class="val-col" style="color:#2E7D32;">{v}</td><td class="center-col">{status_html}</td></tr>"""
+                    status = f"<span class='status-pill {row['css']}'>{row['label']}</span>"
+                    html += f"""<tr class="row-data"><td class="center-col">{d}</td><td class="left-col">{row['desc']}</td><td class="val-col" style="color:#2E7D32;">{v}</td><td class="center-col">{status}</td></tr>"""
 
             html += "</table>"
             st.markdown(html, unsafe_allow_html=True)
