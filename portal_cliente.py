@@ -37,29 +37,37 @@ st.markdown("""
     .neon-green { color: #39FF14; text-shadow: 0 0 15px rgba(57, 255, 20, 0.5); }
     .neon-red { color: #FF4444; text-shadow: 0 0 15px rgba(255, 68, 68, 0.5); }
 
-    /* TABELA UNIFICADA */
-    .custom-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; background-color: #D1C4A9; }
-    
-    /* Cabeçalho Principal */
-    .header-main {
-        background-color: #8B7D5B; color: #000; font-weight: 800; text-transform: uppercase;
-        padding: 12px 15px; font-size: 14px; border: 1px solid #555; letter-spacing: 0.5px;
+    /* ESTILO DO EXPANDER (Para parecer o cabeçalho da tabela) */
+    details > summary {
+        background-color: #8B7D5B !important;
+        color: #000 !important;
+        font-weight: 800 !important;
+        text-transform: uppercase !important;
+        border: 1px solid #555 !important;
+        border-radius: 5px !important;
+        padding: 12px 15px !important;
+        margin-bottom: 5px !important;
+        list-style: none !important; /* Tenta esconder a seta padrão em alguns browsers */
     }
-    
-    /* Divisores de Seção */
-    .section-header {
-        background-color: #333; color: #FFF; font-weight: bold; text-align: left;
-        padding: 8px 15px; font-size: 12px; letter-spacing: 1px; text-transform: uppercase;
-        border-left: 5px solid;
+    details > summary:hover {
+        filter: brightness(1.1);
+        cursor: pointer;
     }
-    .sec-serv { border-left-color: #FFA500; } 
-    .sec-pag { border-left-color: #39FF14; } 
+    /* Conteúdo dentro do expander */
+    details > div {
+        border-color: #8B7D5B !important;
+    }
+
+    /* TABELA INTERNA */
+    .custom-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; background-color: #D1C4A9; }
     
-    /* Colunas e Linhas */
+    /* Colunas */
     .col-header {
         background-color: #A69B80; color: #000; font-weight: 700; text-align: center;
         font-size: 13px; padding: 6px; border: 1px solid #777;
     }
+    
+    /* Linhas */
     .row-data td {
         background-color: #DAE5F0; color: #000; border-bottom: 1px solid #FFF;
         border-right: 1px solid #FFF; padding: 12px 8px; font-size: 13px; vertical-align: middle;
@@ -86,6 +94,15 @@ st.markdown("""
     .pix-box {
         background-color: #2C2C2C; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px dashed #555;
     }
+    
+    /* Divisores de Seção */
+    .section-header {
+        background-color: #333; color: #FFF; font-weight: bold; text-align: left;
+        padding: 6px 15px; font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
+        border-left: 5px solid;
+    }
+    .sec-serv { border-left-color: #FFA500; } 
+    .sec-pag { border-left-color: #39FF14; } 
 </style>
 """, unsafe_allow_html=True)
 
@@ -105,15 +122,11 @@ def enviar_pagamento(client_id, valor, metodo, arquivo):
     try:
         url_publica = None
         if arquivo:
-            # Nome do arquivo: ID_CLIENTE_TIMESTAMP.ext
             ext = arquivo.name.split('.')[-1]
             nome_arq = f"{client_id}_{int(datetime.now().timestamp())}.{ext}"
-            
-            # Upload
             supabase.storage.from_("comprovantes").upload(path=nome_arq, file=arquivo.getvalue(), file_options={"content-type": arquivo.type})
             url_publica = supabase.storage.from_("comprovantes").get_public_url(nome_arq)
 
-        # Insere na tabela como PENDENTE (Correção: Data sem microsegundos para evitar erro no Pandas)
         dados = {
             "cliente_id": client_id,
             "tipo": "compra", 
@@ -178,7 +191,6 @@ def carregar_dados_financeiros(client_id):
             'status_ag': st_ag
         })
     
-    # Lógica Agendado (Pago)
     if saldo > 0:
         agendados_indices = [i for i, item in enumerate(lista) if item['tipo'] == 'deb' and item['status_ag'] == 'Agendado']
         agendados_indices.sort(key=lambda idx: lista[idx]['dt'])
@@ -225,45 +237,45 @@ else:
     txt_s = "CRÉDITO" if saldo >= 0 else "DÉBITO"
     st.markdown(f"""<div class="saldo-container"><div class="saldo-label">SEU SALDO ATUAL</div><div class="saldo-valor {cor_s}">R$ {abs(saldo):.2f}</div><div class="saldo-status">Status: {txt_s}</div></div>""", unsafe_allow_html=True)
     
-    # 2. NOVO PAGAMENTO (Expandir)
+    # 2. NOVO PAGAMENTO
     with st.expander("💸 INFORMAR PAGAMENTO / PIX"):
         st.markdown("""
         <div class="pix-box">
             <b>Chave PIX:</b> 19992944966 (Celular)<br>
             <b>Favorecido:</b> Cantinho da Tosa<br>
-            <span style="font-size:12px; color:#888;">Faça o pagamento pelo seu banco e anexe o comprovante abaixo.</span>
+            <span style="font-size:12px; color:#888;">Faça o pagamento e anexe o comprovante.</span>
         </div>
         """, unsafe_allow_html=True)
         
         with st.form("form_pagamento"):
             c_val, c_met = st.columns(2)
-            val_pag = c_val.number_input("Valor Pago (R$)", min_value=0.0, step=10.0)
-            met_pag = c_met.selectbox("Forma", ["Pix", "Cartão Crédito", "Cartão Débito", "Dinheiro"])
+            val_pag = c_val.number_input("Valor (R$)", min_value=0.0, step=10.0)
+            met_pag = c_met.selectbox("Forma", ["Pix", "Cartão", "Dinheiro"])
             arq = st.file_uploader("Comprovante (Obrigatório)", type=['png','jpg','jpeg','pdf'])
             
             if st.form_submit_button("ENVIAR COMPROVANTE"):
                 if val_pag <= 0:
-                    st.warning("Informe o valor do pagamento.")
-                elif not arq: # --- TRAVA DE SEGURANÇA AQUI ---
-                    st.error("⚠️ É obrigatório anexar o comprovante para validar o pagamento.")
+                    st.warning("Informe o valor.")
+                elif not arq:
+                    st.error("⚠️ Anexe o comprovante para validar.")
                 else:
                     with st.spinner("Enviando..."):
                         if enviar_pagamento(cli['id'], val_pag, met_pag, arq):
-                            st.success("Pagamento enviado para análise! O saldo atualizará após a confirmação.")
+                            st.success("Enviado! Aguarde a confirmação.")
                             time.sleep(2)
                             st.rerun()
 
-    # 3. TABELAS
+    # 3. TABELAS (EXPANDERS)
     if dados:
         df = pd.DataFrame(dados)
-        # --- CORREÇÃO DO PANDAS (IMPEDE O CRASH COM DATAS ESTRANHAS) ---
         df['date_obj'] = pd.to_datetime(df['dt'], errors='coerce') 
-        df = df.dropna(subset=['date_obj']) # Remove se data inválida
+        df = df.dropna(subset=['date_obj'])
         
         df = df.sort_values(by='date_obj', ascending=False)
         df['ano'] = df['date_obj'].dt.year
         df['mes'] = df['date_obj'].dt.month
         
+        # Loop Mês (Cria um Expander para cada Mês)
         for (ano, mes), grupo_mes in df.groupby(['ano', 'mes'], sort=False):
             nome_mes = MESES[mes]
             total_gastos = grupo_mes[grupo_mes['tipo']=='deb']['val'].sum()
@@ -271,13 +283,14 @@ else:
             pets_no_mes = grupo_mes[grupo_mes['pet'] != 'Geral']['pet'].unique()
             pets_str = ", ".join(pets_no_mes) if len(pets_no_mes) > 0 else "Geral"
             
-            html = f"""
+            # Label do Expander (Simula o Cabeçalho Dourado)
+            # Usamos espaços para tentar alinhar (limitação do Streamlit)
+            label_expander = f"{nome_mes} {ano} | {cli['nome'].split()[0]} - {pets_str} | TOTAL: R$ {total_gastos:.2f}"
+            
+            with st.expander(label_expander, expanded=False):
+                # Tabela Interna (Apenas Headers e Dados)
+                html = f"""
 <table class="custom-table">
-    <tr>
-        <td class="header-main" colspan="2">{nome_mes} {ano} <span style="color:#444; margin:0 10px;">|</span> {cli['nome'].split()[0]} - {pets_str}</td>
-        <td class="header-main" style="text-align:right">TOTAL</td>
-        <td class="header-main" style="text-align:right">R$ {total_gastos:.2f}</td>
-    </tr>
     <tr>
         <td class="col-header">Data</td>
         <td class="col-header">Descrição</td>
@@ -285,26 +298,28 @@ else:
         <td class="col-header">Status</td>
     </tr>
 """
-            servicos = grupo_mes[grupo_mes['tipo'] == 'deb']
-            if not servicos.empty:
-                html += """<tr><td colspan="4" class="section-header sec-serv">SERVIÇOS REALIZADOS</td></tr>"""
-                for _, row in servicos.iterrows():
-                    d = row['date_obj'].strftime("%d/%b").lower()
-                    v = f"R$ {row['val']:.2f}"
-                    status = f"<span class='status-pill {row['css']}'>{row['label']}</span>"
-                    html += f"""<tr class="row-data"><td class="center-col">{d}</td><td class="left-col">{row['desc']}</td><td class="val-col">{v}</td><td class="center-col">{status}</td></tr>"""
+                # SEPARAÇÃO 1: SERVIÇOS
+                servicos = grupo_mes[grupo_mes['tipo'] == 'deb']
+                if not servicos.empty:
+                    html += """<tr><td colspan="4" class="section-header sec-serv">SERVIÇOS</td></tr>"""
+                    for _, row in servicos.iterrows():
+                        d = row['date_obj'].strftime("%d/%b").lower()
+                        v = f"R$ {row['val']:.2f}"
+                        status = f"<span class='status-pill {row['css']}'>{row['label']}</span>"
+                        html += f"""<tr class="row-data"><td class="center-col">{d}</td><td class="left-col">{row['desc']}</td><td class="val-col">{v}</td><td class="center-col">{status}</td></tr>"""
 
-            pagamentos = grupo_mes[grupo_mes['tipo'] == 'cred']
-            if not pagamentos.empty:
-                html += """<tr><td colspan="4" class="section-header sec-pag">PAGAMENTOS / CRÉDITOS</td></tr>"""
-                for _, row in pagamentos.iterrows():
-                    d = row['date_obj'].strftime("%d/%b").lower()
-                    v = f"+ R$ {row['val']:.2f}"
-                    status = f"<span class='status-pill {row['css']}'>{row['label']}</span>"
-                    html += f"""<tr class="row-data"><td class="center-col">{d}</td><td class="left-col">{row['desc']}</td><td class="val-col" style="color:#2E7D32;">{v}</td><td class="center-col">{status}</td></tr>"""
+                # SEPARAÇÃO 2: PAGAMENTOS
+                pagamentos = grupo_mes[grupo_mes['tipo'] == 'cred']
+                if not pagamentos.empty:
+                    html += """<tr><td colspan="4" class="section-header sec-pag">PAGAMENTOS</td></tr>"""
+                    for _, row in pagamentos.iterrows():
+                        d = row['date_obj'].strftime("%d/%b").lower()
+                        v = f"+ R$ {row['val']:.2f}"
+                        status = f"<span class='status-pill {row['css']}'>{row['label']}</span>"
+                        html += f"""<tr class="row-data"><td class="center-col">{d}</td><td class="left-col">{row['desc']}</td><td class="val-col" style="color:#2E7D32;">{v}</td><td class="center-col">{status}</td></tr>"""
 
-            html += "</table>"
-            st.markdown(html, unsafe_allow_html=True)
+                html += "</table>"
+                st.markdown(html, unsafe_allow_html=True)
             
     else:
         st.info("Nenhum histórico encontrado.")
