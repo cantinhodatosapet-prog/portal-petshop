@@ -17,104 +17,58 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- ESTILOS CSS (Refinado conforme 'cli mel.png') ---
+# --- ESTILOS CSS ---
 st.markdown("""
 <style>
-    /* Fundo Dark */
     .stApp { background-color: #121212; color: #E0E0E0; font-family: sans-serif; }
-    
-    /* Inputs e Botões */
     .stTextInput > div > div > input { background-color: #2C2C2C; color: white; border: 1px solid #444; border-radius: 5px; }
     .stButton > button { background-color: #4CAF50; color: white; font-weight: bold; width: 100%; border-radius: 5px; border: none; }
-    .stButton > button:hover { background-color: #45a049; }
     
     /* BOX SALDO */
     .saldo-container {
-        background-color: #1E1E1E;
-        border-radius: 12px;
-        padding: 20px;
-        text-align: center;
-        margin-bottom: 30px;
-        border: 1px solid #333;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+        background-color: #1E1E1E; border-radius: 12px; padding: 20px; text-align: center;
+        margin-bottom: 30px; border: 1px solid #333; box-shadow: 0 4px 15px rgba(0,0,0,0.6);
     }
-    .saldo-titulo { font-size: 12px; color: #BBB; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 5px; }
-    .saldo-valor { font-size: 48px; font-weight: 900; margin: 0; line-height: 1.1; }
-    .saldo-status { font-size: 14px; color: #888; margin-top: 5px; }
+    .saldo-titulo { font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 2px; }
+    .saldo-valor { font-size: 48px; font-weight: 900; margin: 5px 0; line-height: 1.1; }
     .neon-green { color: #39FF14; text-shadow: 0 0 15px rgba(57, 255, 20, 0.5); }
     .neon-red { color: #FF4444; text-shadow: 0 0 15px rgba(255, 68, 68, 0.5); }
 
-    /* TABELA FLUIDA */
-    .custom-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 25px;
-        background-color: #D1C4A9; /* Cor de fundo base para evitar buracos */
+    /* TABELA UNIFICADA */
+    .custom-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; background-color: #D1C4A9; }
+    
+    /* Cabeçalho Principal (Mês + Cliente/Pet) */
+    .header-main {
+        background-color: #8B7D5B; color: #000; font-weight: 800; text-transform: uppercase;
+        padding: 12px 15px; font-size: 14px; border: 1px solid #555; letter-spacing: 0.5px;
     }
     
-    /* 1. Cabeçalho do Mês (Dourado/Bege Escuro) */
-    .header-month {
-        background-color: #8B7D5B;
-        color: #000;
-        font-weight: 800;
-        text-transform: uppercase;
-        padding: 12px 15px;
-        font-size: 14px;
-        border: 1px solid #555;
-        letter-spacing: 0.5px;
+    /* Sub-cabeçalho de Seção (Serviços / Pagamentos) */
+    .section-header {
+        background-color: #333; color: #FFF; font-weight: bold; text-align: left;
+        padding: 6px 15px; font-size: 12px; letter-spacing: 1px; text-transform: uppercase;
+        border-left: 5px solid;
     }
+    .sec-serv { border-left-color: #FFA500; } /* Laranja para serviços */
+    .sec-pag { border-left-color: #39FF14; } /* Verde para pagamentos */
     
-    /* 2. Barra Cliente | Pet (Bege e Azul) */
-    .header-client {
-        background-color: #E0D6BC; /* Bege mais claro */
-        color: #000;
-        font-weight: 700;
-        padding: 10px 15px;
-        border: 1px solid #999;
-        font-size: 14px;
-        width: 35%;
-        vertical-align: middle;
-    }
-    .header-pet {
-        background-color: #B0C4DE; /* Azul suave */
-        color: #000;
-        font-weight: 700;
-        text-align: center;
-        padding: 10px;
-        border: 1px solid #999;
-        font-size: 14px;
-        vertical-align: middle;
-    }
-    
-    /* 3. Títulos das Colunas (Data, Serviço...) */
+    /* Colunas */
     .col-header {
-        background-color: #A69B80; /* Tom intermediário */
-        color: #000;
-        font-weight: 700;
-        text-align: center;
-        font-size: 13px;
-        padding: 6px;
-        border: 1px solid #777;
+        background-color: #A69B80; color: #000; font-weight: 700; text-align: center;
+        font-size: 13px; padding: 6px; border: 1px solid #777;
     }
     
-    /* 4. Linhas de Dados */
+    /* Linhas */
     .row-data td {
-        background-color: #DAE5F0; /* Azul bem clarinho */
-        color: #000;
-        border-bottom: 1px solid #FFF;
-        border-right: 1px solid #FFF;
-        padding: 12px 8px;
-        font-size: 13px;
-        vertical-align: middle;
+        background-color: #DAE5F0; color: #000; border-bottom: 1px solid #FFF;
+        border-right: 1px solid #FFF; padding: 12px 8px; font-size: 13px; vertical-align: middle;
     }
     .row-data td:last-child { border-right: none; }
     
-    /* Utilitários de Texto */
     .center-col { text-align: center; }
     .left-col { text-align: left; padding-left: 10px !important; }
     .val-col { text-align: right; font-weight: 700; padding-right: 15px !important; white-space: nowrap; }
-    .ref-col { font-size: 11px; color: #444; font-style: italic; line-height: 1.2; text-align: center;}
-    
+    .ref-col { font-size: 11px; color: #444; font-style: italic; text-align: center; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -125,16 +79,15 @@ def login(telefone_digitado, senha):
         tel_fmt = telefone_digitado 
         if len(nums) == 11: tel_fmt = f"({nums[:2]}) {nums[2:7]}-{nums[7:]}"
         elif len(nums) == 10: tel_fmt = f"({nums[:2]}) {nums[2:6]}-{nums[6:]}"
-        
         response = supabase.table('clientes').select('*').eq('telefone', tel_fmt).eq('senha_web', senha).execute()
         return response.data[0] if response.data else None
     except: return None
 
 # --- DADOS ---
 def carregar_dados_financeiros(client_id):
-    # Pagamentos (Créditos)
+    # Pagamentos
     resp_pag = supabase.table('transacoes_creditos').select('*').eq('cliente_id', client_id).eq('tipo', 'compra').execute()
-    # Serviços (Débitos)
+    # Serviços
     resp_serv = supabase.table('agendamentos').select(
         "id, data_hora, status, observacoes, animais(nome), servicos_base(nome_servico), lancamentos_servicos(valor_total_cobrado, status_pagamento)"
     ).eq('animais.cliente_id', client_id).execute()
@@ -145,18 +98,16 @@ def carregar_dados_financeiros(client_id):
     # Processa Pagamentos
     for p in resp_pag.data:
         v = float(p.get('valor_em_creditos') or 0)
-        if p.get('status_transacao') == 'Confirmado': 
-            saldo += v
+        if p.get('status_transacao') == 'Confirmado': saldo += v
         
-        # Pagamento entra como "Conta Geral"
+        # Garante que tenha alguma referência
+        ref_texto = p.get('observacoes')
+        if not ref_texto:
+            ref_texto = f"Via {p.get('metodo_pagamento')}"
+            
         lista.append({
-            'dt': p['data_transacao'], 
-            'pet': 'Conta Geral', 
-            'serv': f"Crédito ({p.get('metodo_pagamento')})", 
-            'val': v, 
-            'tipo': 'cred', 
-            'obs': p.get('observacoes') or '',
-            'status': p.get('status_transacao')
+            'dt': p['data_transacao'], 'pet': 'Geral', 'desc': 'Crédito em Conta', 
+            'val': v, 'tipo': 'cred', 'ref': ref_texto, 'status': p.get('status_transacao')
         })
 
     # Processa Serviços
@@ -165,18 +116,15 @@ def carregar_dados_financeiros(client_id):
         lanc = s.get('lancamentos_servicos')
         lanc = lanc[0] if isinstance(lanc, list) and lanc else (lanc if isinstance(lanc, dict) else {})
         v = float(lanc.get('valor_total_cobrado') or 0)
+        if s['status'] == 'Concluído': saldo -= v
         
-        if s['status'] == 'Concluído': 
-            saldo -= v
+        # Descrição une Pet e Serviço
+        nome_pet = s['animais'].get('nome', 'Pet')
+        nome_servico = s['servicos_base'].get('nome_servico', 'Serviço')
         
         lista.append({
-            'dt': s['data_hora'], 
-            'pet': s['animais'].get('nome', 'Pet'), 
-            'serv': s['servicos_base'].get('nome_servico', 'Serviço'), 
-            'val': v, 
-            'tipo': 'deb', 
-            'obs': s.get('observacoes') or '',
-            'status': s['status']
+            'dt': s['data_hora'], 'pet': nome_pet, 'desc': f"{nome_pet} - {nome_servico}",
+            'val': v, 'tipo': 'deb', 'ref': s.get('observacoes') or '', 'status': s['status']
         })
         
     return saldo, lista
@@ -209,19 +157,12 @@ else:
         
     saldo, dados = carregar_dados_financeiros(cli['id'])
     
-    # 1. SALDO NEON
+    # 1. SALDO
     cor_s = "neon-green" if saldo >= 0 else "neon-red"
     txt_s = "CRÉDITO" if saldo >= 0 else "DÉBITO"
+    st.markdown(f"""<div class="saldo-container"><div class="saldo-label">SEU SALDO ATUAL</div><div class="saldo-valor {cor_s}">R$ {abs(saldo):.2f}</div><div class="saldo-status">Status: {txt_s}</div></div>""", unsafe_allow_html=True)
     
-    st.markdown(f"""
-    <div class="saldo-container">
-        <div class="saldo-titulo">SEU SALDO ATUAL</div>
-        <div class="saldo-valor {cor_s}">R$ {abs(saldo):.2f}</div>
-        <div class="saldo-status">Status: {txt_s}</div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # 2. TABELAS (Group By Mês -> Depois por Pet)
+    # 2. TABELAS POR MÊS
     if dados:
         df = pd.DataFrame(dados)
         df['date_obj'] = pd.to_datetime(df['dt'])
@@ -229,54 +170,49 @@ else:
         df['ano'] = df['date_obj'].dt.year
         df['mes'] = df['date_obj'].dt.month
         
-        # Loop por Mês
+        # Loop Mês a Mês
         for (ano, mes), grupo_mes in df.groupby(['ano', 'mes'], sort=False):
             nome_mes = MESES[mes]
-            total_mes = grupo_mes[grupo_mes['tipo']=='deb']['val'].sum()
+            total_gastos = grupo_mes[grupo_mes['tipo']=='deb']['val'].sum()
             
-            # ATENÇÃO: HTML colado à esquerda para evitar quebra de código no Streamlit
-            html = f"""<table class="custom-table">
-<tr>
-<td class="header-month" colspan="2">{nome_mes} - {ano}</td>
-<td class="header-month" style="text-align:right">TOTAL</td>
-<td class="header-month" style="text-align:right">R$ {total_mes:.2f}</td>
-</tr>"""
+            # Lista de Pets únicos neste mês (para por no cabeçalho)
+            pets_no_mes = grupo_mes[grupo_mes['pet'] != 'Geral']['pet'].unique()
+            pets_str = ", ".join(pets_no_mes) if len(pets_no_mes) > 0 else "Geral"
             
-            # Loop por Pet dentro do Mês (Cria o bloco Cliente | Pet uma vez)
-            pets = grupo_mes['pet'].unique()
-            for pet in pets:
-                df_pet = grupo_mes[grupo_mes['pet'] == pet]
-                
-                # Título do Grupo (Tamara | Capitu ou Tamara | Conta Geral)
-                html += f"""
-<tr>
-<td class="header-client" colspan="1">{cli['nome'].split()[0]}</td>
-<td class="header-pet" colspan="3">{pet}</td>
-</tr>
-<tr>
-<td class="col-header">Data</td>
-<td class="col-header">Serviço</td>
-<td class="col-header" style="text-align:right">Valor</td>
-<td class="col-header">Ref</td>
-</tr>"""
-                
-                # Linhas de Itens
-                for _, row in df_pet.iterrows():
-                    d_str = row['date_obj'].strftime("%d-%b").lower()
-                    v_str = f"R$ {row['val']:.2f}"
-                    obs_ref = row['obs'] if row['obs'] else ""
-                    
-                    if row['tipo'] == 'cred': 
-                        v_str = f"+ {v_str}"
-                    
-                    html += f"""
-<tr class="row-data">
-<td class="center-col">{d_str}</td>
-<td class="left-col">{row['serv']}</td>
-<td class="val-col">{v_str}</td>
-<td class="ref-col">{obs_ref}</td>
-</tr>"""
-            
+            # INICIA TABELA DO MÊS
+            # Cabeçalho Único: Mês - Ano | Cliente - Pets
+            html = f"""
+<table class="custom-table">
+    <tr>
+        <td class="header-main" colspan="2">{nome_mes} {ano} <span style="font-weight:normal; color:#333; margin-left:10px;">|</span> {cli['nome'].split()[0]} - {pets_str}</td>
+        <td class="header-main" style="text-align:right">TOTAL</td>
+        <td class="header-main" style="text-align:right">R$ {total_mes:.2f}</td>
+    </tr>
+    <tr>
+        <td class="col-header">Data</td>
+        <td class="col-header">Descrição</td>
+        <td class="col-header" style="text-align:right">Valor</td>
+        <td class="col-header">Ref</td>
+    </tr>
+"""
+            # SEPARAÇÃO 1: SERVIÇOS
+            servicos = grupo_mes[grupo_mes['tipo'] == 'deb']
+            if not servicos.empty:
+                html += """<tr><td colspan="4" class="section-header sec-serv">Serviços Realizados</td></tr>"""
+                for _, row in servicos.iterrows():
+                    d = row['date_obj'].strftime("%d/%b").lower()
+                    v = f"R$ {row['val']:.2f}"
+                    html += f"""<tr class="row-data"><td class="center-col">{d}</td><td class="left-col">{row['desc']}</td><td class="val-col">{v}</td><td class="ref-col">{row['ref']}</td></tr>"""
+
+            # SEPARAÇÃO 2: PAGAMENTOS
+            pagamentos = grupo_mes[grupo_mes['tipo'] == 'cred']
+            if not pagamentos.empty:
+                html += """<tr><td colspan="4" class="section-header sec-pag">Pagamentos / Créditos</td></tr>"""
+                for _, row in pagamentos.iterrows():
+                    d = row['date_obj'].strftime("%d/%b").lower()
+                    v = f"+ R$ {row['val']:.2f}"
+                    html += f"""<tr class="row-data"><td class="center-col">{d}</td><td class="left-col">{row['desc']}</td><td class="val-col" style="color:#2E7D32;">{v}</td><td class="ref-col">{row['ref']}</td></tr>"""
+
             html += "</table>"
             st.markdown(html, unsafe_allow_html=True)
             
