@@ -74,7 +74,8 @@ st.markdown("""
         display: inline-block; padding: 4px 8px; border-radius: 4px; 
         font-size: 10px; font-weight: 800; text-transform: uppercase; color: #FFF; min-width: 80px;
     }
-    .st-verde { background-color: #2E7D32; }   
+    .st-verde { background-color: #2E7D32; }   /* Concluído Pago */
+    .st-verde-claro { background-color: #8BC34A; color: #000; } /* Agendado Pago (NOVO) */
     .st-vermelho { background-color: #C62828; } 
     .st-laranja { background-color: #EF6C00; }  
     .st-azul { background-color: #1565C0; }     
@@ -103,22 +104,21 @@ def carregar_dados_financeiros(client_id):
     lista = []
     saldo = 0.0
     
-    # Processa Pagamentos
+    # 1. Processa Pagamentos (Créditos)
     for p in resp_pag.data:
         v = float(p.get('valor_em_creditos') or 0)
         status = p.get('status_transacao')
         if status == 'Confirmado': saldo += v
         
-        # Define visual
         label = "Confirmado" if status == 'Confirmado' else "Pendente"
         css = "st-azul" if status == 'Confirmado' else "st-vermelho"
 
         lista.append({
             'dt': p['data_transacao'], 'pet': 'Geral', 'desc': f"Crédito ({p.get('metodo_pagamento')})", 
-            'val': v, 'tipo': 'cred', 'label': label, 'css': css
+            'val': v, 'tipo': 'cred', 'label': label, 'css': css, 'ref': p.get('observacoes') or f"Via {p.get('metodo_pagamento')}"
         })
 
-    # Processa Serviços
+    # 2. Processa Serviços (Débitos)
     for s in resp_serv.data:
         if not s.get('animais'): continue
         lanc = s.get('lancamentos_servicos')
@@ -130,7 +130,7 @@ def carregar_dados_financeiros(client_id):
         
         if st_ag == 'Concluído': saldo -= v
         
-        # Lógica de Etiquetas
+        # Lógica de Etiquetas Base
         if st_ag == 'Agendado': label, css = "Agendado", "st-laranja"
         elif st_ag == 'Concluído':
             if st_fin == 'Pago': label, css = "Pago", "st-verde"
@@ -143,9 +143,30 @@ def carregar_dados_financeiros(client_id):
         
         lista.append({
             'dt': s['data_hora'], 'pet': nome_pet, 'desc': nome_servico,
-            'val': v, 'tipo': 'deb', 'label': label, 'css': css
+            'val': v, 'tipo': 'deb', 'label': label, 'css': css, 'ref': s.get('observacoes') or '',
+            'status_ag': st_ag # Guardamos para logica posterior
         })
+    
+    # 3. Lógica Especial: Agendado/Pago (Se houver saldo)
+    if saldo > 0:
+        # Identifica índices dos itens Agendados
+        agendados_indices = [i for i, item in enumerate(lista) if item['tipo'] == 'deb' and item['status_ag'] == 'Agendado']
         
+        # Ordena indices pela data do serviço (do mais antigo para o mais novo)
+        agendados_indices.sort(key=lambda idx: lista[idx]['dt'])
+        
+        saldo_para_abatimento = saldo
+        for idx in agendados_indices:
+            valor_servico = lista[idx]['val']
+            # Se o saldo cobre o serviço, marca como "Agendado (Pago)"
+            if saldo_para_abatimento >= valor_servico:
+                lista[idx]['label'] = "Agendado (Pago)"
+                lista[idx]['css'] = "st-verde-claro"
+                saldo_para_abatimento -= valor_servico
+            else:
+                # Se o saldo acabou, para de marcar os próximos
+                break
+
     return saldo, lista
 
 MESES = {1:'JANEIRO', 2:'FEVEREIRO', 3:'MARÇO', 4:'ABRIL', 5:'MAIO', 6:'JUNHO', 7:'JULHO', 8:'AGOSTO', 9:'SETEMBRO', 10:'OUTUBRO', 11:'NOVEMBRO', 12:'DEZEMBRO'}
